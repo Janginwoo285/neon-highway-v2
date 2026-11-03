@@ -1,0 +1,40 @@
+# Render Blueprint for Letterday Spring Boot API + PostgreSQL.
+# Review any billing or expiration details before approving the Blueprint.
+services:
+  - type: web
+    name: letterday-api
+    runtime: docker
+    plan: free
+    rootDir: letterday/server
+    healthCheckPath: /api/health
+    envVars:
+      # Spring resolves the ${DB_HOST} and ${DB_NAME} placeholders at runtime.
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - key: DB_HOST
+        fromDatabase:
+          name: letterday-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: letterday-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: letterday-db
+          property: database
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: letterday-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: letterday-db
+          property: password
+      - key: APP_CORS_ORIGINS
+        value: https://janginwoo285.github.io
+
+databases:
+  - name: letterday-db
+    databaseName: letterday
+    plan: free
