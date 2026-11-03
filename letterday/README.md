@@ -1,3 +1,9 @@
+## One-click Render Blueprint
+
+[Deploy Letterday API + PostgreSQL to Render](https://render.com/deploy?repo=https://github.com/Janginwoo285/neon-highway-v2)
+
+The repository-root `render.yaml` provisions the API and PostgreSQL. You must sign in to Render and approve the resources yourself. The Blueprint declares free plans, subject to Render availability and limits; **free PostgreSQL databases expire after 30 days**. The web app is already served by GitHub Pages, but until Render deployment completes and you enter its actual HTTPS API URL in Settings, cross-user sharing remains unavailable.
+
 # Letterday — 나에게 보내는 오늘의 편지
 
 A warm-tone letter-style diary app and portfolio project, combining **HTML, JavaScript, Spring Boot, and Flutter**.
