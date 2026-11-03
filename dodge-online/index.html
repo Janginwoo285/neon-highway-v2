@@ -449,7 +449,8 @@ function displayAuth(){
  setStatus(me?'로그인됨: '+me.nickname+' ('+me.username+')':apiBase?'서버 연결됨. 로그인 또는 회원가입해 주세요.':'서버 미연결. 게임은 로그인 없이 즐길 수 있습니다.');
 }
 async function connectServer(raw){
- let url=(raw||'').trim().replace(/\\/+$/,'');
+ let url=(raw||'').trim();
+ while(url.endsWith('/')) url=url.slice(0,-1);
  if(!/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(url)){setStatus('HTTPS 서버 주소를 정확히 입력해 주세요.');return}
  apiBase=url;me=null;token='';
  try{sessionStorage.removeItem(SETTINGS_KEY+'token')}catch(e){}
