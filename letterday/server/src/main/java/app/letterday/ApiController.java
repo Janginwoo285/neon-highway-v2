@@ -134,7 +134,7 @@ public class ApiController {
     @GetMapping("/feed")
     public List<Map<String,Object>> feed(){
         return db.query("SELECT e.*,u.email FROM journal_entry e JOIN app_user u ON e.user_id=u.id WHERE e.visibility='public' ORDER BY e.created_at DESC LIMIT 50",
-                (rs,n)->{Map<String,Object> m=mapEntry(rs);String email=rs.getString("email");m.put("author",email.split("@")[0].replaceAll("[^a-zA-Z0-9_.-]","").substring(0,Math.min(12,email.split("@")[0].replaceAll("[^a-zA-Z0-9_.-]","").length())));return m;});
+                (rs,n)->{Map<String,Object> m=mapEntry(rs);m.put("author","익명의 편지");return m;});
     }
     @GetMapping("/health")
     public Map<String,String> health(){return Map.of("status","ok");}
