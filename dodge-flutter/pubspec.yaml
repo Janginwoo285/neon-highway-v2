@@ -1,0 +1,12 @@
+name: dodge_racer
+description: Mobile Flutter shell for the Dodge Final game (GitHub Pages + Spring leaderboard).
+publish_to: none
+version: 1.0.0+1
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  webview_flutter: ^4.10.0
+flutter:
+  uses-material-design: true
