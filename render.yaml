@@ -34,7 +34,42 @@ services:
       - key: APP_CORS_ORIGINS
         value: https://janginwoo285.github.io
 
+  - type: web
+    name: dodge-racer-api
+    runtime: docker
+    plan: free
+    rootDir: dodge-server
+    healthCheckPath: /api/game/health
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://${DODGE_DB_HOST}:${DODGE_DB_PORT}/${DODGE_DB_NAME}
+      - key: DODGE_DB_HOST
+        fromDatabase:
+          name: dodge-racer-db
+          property: host
+      - key: DODGE_DB_PORT
+        fromDatabase:
+          name: dodge-racer-db
+          property: port
+      - key: DODGE_DB_NAME
+        fromDatabase:
+          name: dodge-racer-db
+          property: database
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: dodge-racer-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: dodge-racer-db
+          property: password
+      - key: APP_CORS_ORIGINS
+        value: https://janginwoo285.github.io
+
 databases:
   - name: letterday-db
     databaseName: letterday
+    plan: free
+  - name: dodge-racer-db
+    databaseName: dodge
     plan: free
