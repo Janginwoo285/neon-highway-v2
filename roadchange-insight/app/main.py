@@ -11,8 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, desc
-from .db import init_db, get_db, User, LoginSession, RoadChange, DriveClip, GpsPoint, MatchRun, Candidate, AuditLog, BusinessScenario, PilotTrial, RiskEvidence
-from .seed import seed_demo
+from .db import engine, init_db, get_db, User, LoginSession, RoadChange, DriveClip, GpsPoint, MatchRun, Candidate, AuditLog, BusinessScenario, PilotTrial, RiskEvidence
+from .seed import seed_demo, append_synthetic_demo
 from .matching import match_clips
 
 ROOT = Path(__file__).resolve().parent
@@ -75,7 +75,7 @@ class ReviewReq(BaseModel):
     status:Literal['accepted','rejected','hold']
     note:str=Field(min_length=3,max_length=800)
 
-app=FastAPI(title='RoadChange Insight API',description='도로 변경 기반 주행 데이터 후보 탐색 MVP (합성 시연 데이터)',version='1.2.0')
+app=FastAPI(title='RoadChange Insight API',description='도로 변경 기반 주행 데이터 후보 탐색 MVP (합성 시연 데이터)',version='1.3.0')
 init_db()
 
 @app.get('/api/health')
@@ -131,13 +131,32 @@ def seed_for_user(db:Session=Depends(get_db),user:User=Depends(private_user)):
     audit(db,user.id,'seed_demo','합성 데모 데이터 생성');db.commit()
     return {'ok':True}
 
+@app.post('/api/demo/append', status_code=201)
+def append_demo(db:Session=Depends(get_db),user:User=Depends(private_user)):
+    """Save additional fictional GPS/video metadata in the account database."""
+    if not ENABLE_DEMO:raise HTTPException(403,'시연 데이터 생성이 비활성화되어 있습니다.')
+    changes_count=db.scalar(select(func.count()).select_from(RoadChange).where(RoadChange.user_id==user.id)) or 0
+    clips_count=db.scalar(select(func.count()).select_from(DriveClip).where(DriveClip.user_id==user.id)) or 0
+    if changes_count+2>60 or clips_count+8>240:
+        raise HTTPException(409,'데모 계정 저장 한도(변경 지점 60개, 주행 클립 240개)에 도달했습니다.')
+    try:
+        result=append_synthetic_demo(db,user.id,changes_count//2)
+        audit(db,user.id,'demo_append','추가 가상 도로 지점 2개 / 주행 로그 8개 / GPS 40개 저장')
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return {'ok':True,**result,'total_changes':changes_count+2,'total_clips':clips_count+8,
+            'storage_backend':'PostgreSQL' if engine.dialect.name=='postgresql' else 'SQLite (local)',
+            'message':'서버 데이터베이스에 저장했습니다. 같은 계정으로 새로고침해도 유지됩니다.'}
+
 def change_dict(x):return {'id':x.id,'code':x.code,'name':x.name,'kind':x.kind,'latitude':x.latitude,'longitude':x.longitude,'observed_at':x.observed_at,'radius_m':x.radius_m,'description':x.description,'source':x.source}
 def clip_dict(x):return {'id':x.id,'code':x.code,'trip_id':x.trip_id,'start_at':x.start_at,'end_at':x.end_at,'source':x.source,'has_video':bool(x.video_path)}
 
 @app.get('/api/summary')
 def summary(db:Session=Depends(get_db),u:User=Depends(private_user)):
     count=lambda table: db.scalar(select(func.count()).select_from(table).where(table.user_id==u.id)) or 0
-    return {'changes':count(RoadChange),'clips':count(DriveClip),'runs':count(MatchRun),'candidates':count(Candidate),'accepted':db.scalar(select(func.count()).select_from(Candidate).where(Candidate.user_id==u.id,Candidate.review_status=='accepted')) or 0,'user_name':u.name,'mode':'합성·업로드 데이터 시연','demo_enabled':ENABLE_DEMO,'video_uploads_enabled':not DISABLE_VIDEO_UPLOADS}
+    return {'changes':count(RoadChange),'clips':count(DriveClip),'runs':count(MatchRun),'candidates':count(Candidate),'accepted':db.scalar(select(func.count()).select_from(Candidate).where(Candidate.user_id==u.id,Candidate.review_status=='accepted')) or 0,'user_name':u.name,'mode':'합성·업로드 데이터 시연','demo_enabled':ENABLE_DEMO,'video_uploads_enabled':not DISABLE_VIDEO_UPLOADS,'storage_backend':'PostgreSQL' if engine.dialect.name=='postgresql' else 'SQLite (local)'}
 
 @app.get('/api/changes')
 def changes(db:Session=Depends(get_db),u:User=Depends(private_user)):
