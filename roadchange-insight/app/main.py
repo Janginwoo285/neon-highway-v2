@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, desc
-from .db import init_db, get_db, User, LoginSession, RoadChange, DriveClip, GpsPoint, MatchRun, Candidate, AuditLog
+from .db import init_db, get_db, User, LoginSession, RoadChange, DriveClip, GpsPoint, MatchRun, Candidate, AuditLog, BusinessScenario, PilotTrial, RiskEvidence
 from .seed import seed_demo
 from .matching import match_clips
 
@@ -75,7 +75,7 @@ class ReviewReq(BaseModel):
     status:Literal['accepted','rejected','hold']
     note:str=Field(min_length=3,max_length=800)
 
-app=FastAPI(title='RoadChange Insight API',description='도로 변경 기반 주행 데이터 후보 탐색 MVP (합성 시연 데이터)',version='1.0.0')
+app=FastAPI(title='RoadChange Insight API',description='도로 변경 기반 주행 데이터 후보 탐색 MVP (합성 시연 데이터)',version='1.2.0')
 init_db()
 
 @app.get('/api/health')
@@ -286,5 +286,109 @@ def demo_csv():
 
 @app.get('/',response_class=HTMLResponse)
 def index():return FileResponse(STATIC/'index.html')
+
+
+
+# INVESTOR VALIDATION (prototype measurements are user-entered, not validated company data)
+STRATEGY_SECTIONS = [
+ {'n':'01','title':'고객','tag':'구매 의사 확인 필요','text':'초기 실증 대상: 현대차·기아–42dot 자율주행 데이터 개발 관련 조직. 예산 소유자, 실제 유료 구매 담당자 및 독립 계약 단위는 확인 필요.'},
+ {'n':'02','title':'문제','tag':'실증 필요','text':'기존 이벤트 선별 및 Hard Example Mining을 보완하여 공사·임시 차로 변경의 위치·관측 시각을 단서로 비개입 유효 장면을 추가 확보할 수 있는지 검증한다. 현장 검수 방식은 가설.'},
+ {'n':'03','title':'해결책','tag':'구현과 가정 구분','text':'도로 변경 정보를 주행 GPS·시각과 매칭해 후보를 찾고, 중복을 표시해 검수자가 유효 장면을 확정한다. 확정 메타데이터는 CSV·JSON으로 내보낸다. Agentic AI 자동 변경 탐지와 내부 학습 파이프라인 직접 연동은 미구현.'},
+ {'n':'04','title':'고객 가치','tag':'실적 아닌 목표','text':'미발견 장면을 더 찾고 중복 탐색을 줄여 검수자의 시간을 모델 개선에 재배치한다. 20분에서 13.5분으로 줄이는 32.5% 단축은 측정 전 목표값.'},
+ {'n':'05','title':'수익','tag':'가격 가정','text':'고객별 연 2,500만 원의 고정 연동·기술지원료를 가정한다. 유료 1·3·8개 고객 시나리오는 매출 추정일 뿐 구매 의사나 실제 국내 시장 규모를 의미하지 않는다.'},
+ {'n':'06','title':'비용','tag':'미계상 비용 확인 필요','text':'초기 개발비 3,000만 원, 연 공통 운영비 1,000만 원, 고객당 연 기술지원비 1,000만 원을 가정한다. 영상 저장·보안·영업·실제 인프라 단가는 미확인.'},
+ {'n':'07','title':'검증할 숫자','tag':'파일럿에서 측정','text':'기존/제안 방식의 ① 유효 장면 검수 통과율 ② 유효 장면 1건 확보 시간 ③ 중복 제외 고유 유효 건수 ④ 비개입 장면 추가 발견 여부를 같은 조건에서 비교한다. 연간 1만 건은 목표이며 실적이 아니다.'}
+]
+INVESTOR_RISKS = [
+ {'code':'R1','title':'구매 조직과 예산 담당자 미확인','where':'고객 · 수익','question':'누가 연 2,500만 원의 지출을 승인하며, 실제 구매 의사를 확인했습니까?','action':'잠재 구매 담당자·계약 구조 확인'},
+ {'code':'R2','title':'기존 선별 기술 대비 신규 발견 가치 미확인','where':'문제','question':'기존 Hard Example Mining이 찾지 못한 장면을 새 방식은 얼마나 발견합니까?','action':'같은 로그에서 기존 대비 추가 발견 건수 검증'},
+ {'code':'R3','title':'시간 단축·통과율 목표 미검증','where':'해결책 · 가치','question':'20분→13.5분과 20%→40%를 같은 검수 조건에서 입증했습니까?','action':'검수 시도·확정 건수·투입 시간 기록'},
+ {'code':'R4','title':'실제 지도·주행 로그 접근권한 미확인','where':'해결책 · 비용','question':'공간·시간 정합성, 사용권한, 보안 승인 과정을 확보했습니까?','action':'승인된 샘플과 실제 연동 가능성 확인'},
+ {'code':'R5','title':'고객 8곳 근거 및 전체 원가 미확인','where':'수익 · 비용','question':'국내 잠재 고객 8개사의 산정 근거와 빠진 비용은 무엇입니까?','action':'고객 후보와 전체 원가 조사'}
+]
+class ScenarioInput(BaseModel):
+    annual_price:int=Field(ge=0,le=10000000000)
+    one_time_build:int=Field(ge=0,le=10000000000)
+    annual_fixed:int=Field(ge=0,le=10000000000)
+    annual_per_customer:int=Field(ge=0,le=10000000000)
+    customer_count:int=Field(ge=0,le=1000)
+class PilotInput(BaseModel):
+    mode:Literal['baseline','proposal']
+    label:str=Field(min_length=2,max_length=140)
+    inspected:int=Field(ge=1,le=100000000)
+    accepted:int=Field(ge=0,le=100000000)
+    duplicate_count:int=Field(ge=0,le=100000000)
+    reviewer_minutes:float=Field(gt=0,le=1000000000)
+    no_intervention_accepted:int=Field(ge=0,le=100000000)
+    evidence_note:str=Field(default='',max_length=1200)
+class RiskInput(BaseModel):
+    state:Literal['미확인','검증 중','증빙 확보']
+    note:str=Field(default='',max_length=1200)
+
+def scenario_view(s):
+    n=s.customer_count
+    revenue=n*s.annual_price
+    expense=s.one_time_build+s.annual_fixed+n*s.annual_per_customer
+    margin=s.annual_price-s.annual_per_customer
+    return {'annual_price':s.annual_price,'one_time_build':s.one_time_build,'annual_fixed':s.annual_fixed,'annual_per_customer':s.annual_per_customer,'customer_count':n,'revenue':revenue,'first_year_expense':expense,'first_year_balance_before_unlisted_costs':revenue-expense,'break_even_customers':((s.one_time_build+s.annual_fixed+margin-1)//margin if margin>0 else None),'updated_at':s.updated_at}
+
+def pilots_view(records):
+    result={}
+    for mode in ('baseline','proposal'):
+        a=[r for r in records if r.mode==mode]
+        inspected=sum(r.inspected for r in a)
+        accepted=sum(r.accepted for r in a)
+        minutes=sum(r.reviewer_minutes for r in a)
+        result[mode]={'trials':len(a),'inspected':inspected,'accepted':accepted,'duplicate_count':sum(r.duplicate_count for r in a),'reviewer_minutes':minutes,'no_intervention_accepted':sum(r.no_intervention_accepted for r in a),'pass_rate_pct':round(100*accepted/inspected,2) if inspected else None,'minutes_per_accepted':round(minutes/accepted,2) if accepted else None}
+    before=result['baseline']['minutes_per_accepted']
+    after=result['proposal']['minutes_per_accepted']
+    result['time_reduction_pct']=round(100*(before-after)/before,2) if before and after is not None else None
+    return result
+
+@app.get('/api/strategy')
+def get_strategy(db:Session=Depends(get_db),u:User=Depends(private_user)):
+    s=db.get(BusinessScenario,u.id)
+    if s is None:
+        s=BusinessScenario(user_id=u.id,updated_at=now())
+        db.add(s);db.commit();db.refresh(s)
+    notes={r.risk_code:r for r in db.scalars(select(RiskEvidence).where(RiskEvidence.user_id==u.id)).all()}
+    risks=[{**r,'state':notes[r['code']].state if r['code'] in notes else '미확인','note':notes[r['code']].note if r['code'] in notes else ''} for r in INVESTOR_RISKS]
+    return {'sections':STRATEGY_SECTIONS,'risks':risks,'scenario':scenario_view(s),'targets':{'baseline_minutes_per_accepted':20,'proposal_minutes_per_accepted':13.5,'baseline_pass_rate_pct':20,'proposal_pass_rate_pct':40,'annual_unique_accepted':10000},'sources':[{'title':'현대오토에버 정밀지도 소개','url':'https://www.hyundai-autoever.com/kor/business-area/in-vehicle-it/precision-map/contents.do?cntnSeq=350'},{'title':'현대차그룹 데이터 플라이휠','url':'https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-group-atria-ai-data-flywheel-seoul'}]}
+
+@app.put('/api/strategy/scenario')
+def update_scenario(body:ScenarioInput,db:Session=Depends(get_db),u:User=Depends(private_user)):
+    s=db.get(BusinessScenario,u.id)
+    if s is None:
+        s=BusinessScenario(user_id=u.id);db.add(s)
+    for key,value in body.model_dump().items():setattr(s,key,value)
+    s.updated_at=now();db.commit()
+    return scenario_view(s)
+
+@app.put('/api/strategy/risks/{code}')
+def update_risk(code:str,body:RiskInput,db:Session=Depends(get_db),u:User=Depends(private_user)):
+    if code not in {r['code'] for r in INVESTOR_RISKS}:raise HTTPException(404,'위험 항목 없음')
+    s=db.scalar(select(RiskEvidence).where(RiskEvidence.user_id==u.id,RiskEvidence.risk_code==code))
+    if s is None:
+        s=RiskEvidence(user_id=u.id,risk_code=code);db.add(s)
+    s.state=body.state;s.note=body.note;s.updated_at=now();db.commit()
+    return {'code':code,'state':s.state,'note':s.note}
+
+@app.get('/api/strategy/pilots')
+def get_pilots(db:Session=Depends(get_db),u:User=Depends(private_user)):
+    a=db.scalars(select(PilotTrial).where(PilotTrial.user_id==u.id).order_by(PilotTrial.id.desc())).all()
+    return {'records':[{'id':r.id,'mode':r.mode,'label':r.label,'inspected':r.inspected,'accepted':r.accepted,'duplicate_count':r.duplicate_count,'reviewer_minutes':r.reviewer_minutes,'no_intervention_accepted':r.no_intervention_accepted,'evidence_note':r.evidence_note,'recorded_at':r.recorded_at} for r in a],'summary':pilots_view(a)}
+
+@app.post('/api/strategy/pilots',status_code=201)
+def create_pilot(body:PilotInput,db:Session=Depends(get_db),u:User=Depends(private_user)):
+    if body.accepted>body.inspected or body.duplicate_count>body.inspected or body.accepted+body.duplicate_count>body.inspected or body.no_intervention_accepted>body.accepted:raise HTTPException(422,'건수 입력값 검증 실패')
+    row=PilotTrial(user_id=u.id,recorded_at=now(),**body.model_dump());db.add(row);db.commit()
+    return {'id':row.id,'ok':True}
+
+@app.delete('/api/strategy/pilots/{pilot_id}')
+def remove_pilot(pilot_id:int,db:Session=Depends(get_db),u:User=Depends(private_user)):
+    row=db.scalar(select(PilotTrial).where(PilotTrial.user_id==u.id,PilotTrial.id==pilot_id))
+    if row is None:raise HTTPException(404,'검수 기록 없음')
+    db.delete(row);db.commit()
+    return {'ok':True}
 
 app.mount('/static',StaticFiles(directory=str(STATIC)),name='static')

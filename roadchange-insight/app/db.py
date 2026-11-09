@@ -104,3 +104,37 @@ def get_db():
 def init_db():
     ROOT.joinpath('data').mkdir(parents=True,exist_ok=True)
     Base.metadata.create_all(engine)
+
+
+class BusinessScenario(Base):
+    __tablename__ = 'business_scenarios'
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), primary_key=True)
+    annual_price: Mapped[int] = mapped_column(Integer, default=25000000)
+    one_time_build: Mapped[int] = mapped_column(Integer, default=30000000)
+    annual_fixed: Mapped[int] = mapped_column(Integer, default=10000000)
+    annual_per_customer: Mapped[int] = mapped_column(Integer, default=10000000)
+    customer_count: Mapped[int] = mapped_column(Integer, default=3)
+    updated_at: Mapped[str] = mapped_column(String(40), default='')
+
+class PilotTrial(Base):
+    __tablename__ = 'pilot_trials'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), index=True)
+    mode: Mapped[str] = mapped_column(String(24))
+    label: Mapped[str] = mapped_column(String(140))
+    inspected: Mapped[int] = mapped_column(Integer)
+    accepted: Mapped[int] = mapped_column(Integer)
+    duplicate_count: Mapped[int] = mapped_column(Integer)
+    reviewer_minutes: Mapped[float] = mapped_column(Float)
+    no_intervention_accepted: Mapped[int] = mapped_column(Integer)
+    evidence_note: Mapped[str] = mapped_column(Text, default='')
+    recorded_at: Mapped[str] = mapped_column(String(40))
+
+class RiskEvidence(Base):
+    __tablename__ = 'risk_evidence'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), index=True)
+    risk_code: Mapped[str] = mapped_column(String(12))
+    state: Mapped[str] = mapped_column(String(20), default='미확인')
+    note: Mapped[str] = mapped_column(Text, default='')
+    updated_at: Mapped[str] = mapped_column(String(40))

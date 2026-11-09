@@ -7,12 +7,13 @@
   <meta name="description" content="RoadChange Insight — 도로 변경 정보를 활용한 주행 영상 탐색 및 검수 프로토타입" />
   <title>RoadChange Insight | Road Data Intelligence</title>
   <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/report.css?v=12" />
 </head>
 <body>
   <div id="app" class="app-shell">
     <aside class="sidebar" id="sidebar">
       <div class="logo-area"><div class="brand-mark"><svg viewBox="0 0 40 40" fill="none" width="40" height="40"><path d="M6 30 20 7l14 23H6Z" stroke="#DCEAF7" stroke-width="2.6" stroke-linejoin="round"/><path d="M20 15v9m0 5v.5" stroke="#8FDCF8" stroke-width="2.7" stroke-linecap="round"/></svg></div><div><div class="brand">ROADCHANGE<span class="brand-mid">·</span></div><div class="brand-tail">INSIGHT <span>LAB</span></div></div></div>
-      <div class="workspace-pill"><span class="indicator-pulse"></span> MOBILITY INTELLIGENCE <span class="pill-v">v1.0</span></div>
+      <div class="workspace-pill"><span class="indicator-pulse"></span> MOBILITY INTELLIGENCE <span class="pill-v">v1.2</span></div>
       <div class="side-divider"></div>
       <div class="side-label">WORKSPACE</div>
       <nav id="sidebarNav" aria-label="주요 메뉴"></nav>
@@ -30,6 +31,7 @@
   <section id="authScreen" class="auth-screen hidden"><div class="auth-layout"><div class="auth-visual"><div class="auth-art"></div><div class="auth-visual-content"><span class="micro-label">ROAD DATA INTELLIGENCE / 2026</span><div class="auth-huge">MAKE<br/>EVERY ROAD<br/><em>CHANGE</em><br/>COUNT.</div><p>도로가 바뀌는 순간부터,<br/>학습 데이터의 새로운 기회가 시작됩니다.</p><div class="auth-tags"><span>ROAD CHANGE DETECTION</span><span>DRIVE LOG MATCHING</span><span>HUMAN REVIEW</span></div></div></div><div class="auth-card"><div class="auth-card-top"><span class="auth-symbol">◢</span><strong>ROADCHANGE <small>INSIGHT</small></strong></div><div class="auth-card-content"><span class="micro-label dark">SECURE WORKSPACE</span><h1>환영합니다.</h1><p>주행 데이터 탐색 워크벤치에 로그인하거나<br/>합성 데이터로 바로 체험해 보세요.</p><div class="auth-switch"><button class="active" data-authmode="login">로그인</button><button data-authmode="register">회원가입</button></div><form id="authForm"><label id="nameLabel" class="hidden">이름<input name="name" type="text" placeholder="프로젝트 담당자" maxlength="100" autocomplete="name"></label><label>이메일<input name="email" type="email" required placeholder="you@company.com" maxlength="255" autocomplete="username"></label><label>비밀번호<input name="password" type="password" required minlength="8" maxlength="128" placeholder="8자 이상" autocomplete="current-password"></label><p class="form-error" id="authError" role="alert"></p><button class="btn-primary wide" id="authSubmit" type="submit">로그인 <span>→</span></button></form><div class="auth-or"><span>OR</span></div><button class="btn-demo wide" id="quickDemo">실습용 데모 계정 자동 생성 <span>↗</span></button><p class="auth-disclaimer">비밀번호는 해시 처리되어 서버 DB에 저장됩니다. 데모는 합성 위치·GPS·영상 데이터를 사용합니다.</p></div></div></div></section>
   <div class="toast-stack" id="toastStack" aria-live="polite"></div>
   <div class="backdrop" id="backdrop"></div>
-  <script src="/static/app.js" defer></script>
+  <script src="/static/report.js?v=12" defer></script>
+  <script src="/static/app.js?v=12" defer></script>
 </body>
 </html>
